@@ -8,3 +8,7 @@ env/
 *.env
 .envrc
 
+.venv_persona
+*__pycache__/
+*.pyc
+.idea
