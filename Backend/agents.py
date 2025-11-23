@@ -15,11 +15,20 @@ class ContextManagerAgent:
         text = "\n".join([f"{h['sender']}: {h['message']}" for h in history])
 
         prompt = f"""
-        Summarize this chat conversation in 3–4 sentences.
-        Do NOT invent facts.
+        Create a compact conversation summary that preserves continuity.
+        
+        Requirements:
+        - Summarize the whole conversation in 2–3 sentences.
+        - Then include the last 2–3 actual messages word-for-word.
+        - This ensures no greeting repetition.
+        - Do NOT invent anything.
 
         Conversation:
         {text}
+
+        Return format:
+        <summary>
+        <recent_messages>
         """
         res = self.model.generate_content(prompt)
         return res.text.strip()
@@ -37,10 +46,15 @@ class CharacterAgent:
         You are {self.character_name}.
         Tone: {self.tone}.
 
-        Stay completely in character.
-        No breaking the fourth wall.
+        RULES:
+        - Continue the conversation naturally.
+        - DO NOT restart the conversation.
+        - DO NOT greet unless the user greets first.
+        - Do not summarize the conversation.
+        - Keep responses consistent with the last few turns included in the summary.
+        - Stay 100% in character.
 
-        Context Summary:
+        Conversation Summary + Recent Turns:
         {context_summary}
 
         User: {user_msg}
@@ -58,11 +72,17 @@ class ModeratorAgent:
 
     def check(self, reply):
         prompt = f"""
-        Clean this reply:
-        - No hallucinations
-        - Keep same tone & personality
-        - Remove unsafe content
+        Clean the reply WITHOUT changing its meaning.
+        Do NOT add greetings.
+        Do NOT restart the conversation.
+        Only fix:
+        - unsafe content
+        - hallucinated details
+        - grammar if needed
 
+        Keep style, tone, and message content.
+
+        Reply to clean:
         {reply}
         """
         res = self.model.generate_content(prompt)
@@ -111,6 +131,13 @@ class MultiAgentPipeline:
 
     def run(self, persona_id, user_msg):
         history = fetch_last_messages_api(persona_id)
-        ctx = self.ctx.build_context(history)
+        
+        # If conversation is new, avoid summary hallucination:
+        if len(history) == 0:
+            ctx = "Summary: New conversation. Recent turns: None"
+        else:
+            ctx = self.ctx.build_context(history)
+            
         raw = self.char.reply(ctx, user_msg)
         return self.mod.check(raw)
+
