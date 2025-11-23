@@ -9,8 +9,8 @@ sqlalchemy
 pymysql
 python-multipart
 PyJWT
+bcrypt==3.2.2
+passlib==1.7.4
 google-generativeai
 certifi
-passlib[bcrypt]==1.7.4
-bcrypt==3.2.2
 jose
