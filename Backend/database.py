@@ -12,5 +12,10 @@ DB_CONFIG = {
     "port": int(os.getenv("DB_PORT", 3306)),
 }
 
+if os.getenv("DB_CA"):
+    DB_CONFIG["ssl_ca"] = os.getenv("DB_CA")
+    DB_CONFIG["ssl_verify_cert"] = True
+
+
 def get_db_conn():
     return mysql.connector.connect(**DB_CONFIG)
