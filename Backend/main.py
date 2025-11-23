@@ -16,6 +16,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/health")
+def health_check():
+    """Test database connection"""
+    try:
+        conn = get_db_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return {"status": "healthy", "database": "connected", "test_query": result[0]}
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        return {
+            "status": "unhealthy",
+            "database": "disconnected",
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "traceback": error_details
+        }
+
+
 # --------------------------------------------------------
 # REGISTER
 # --------------------------------------------------------
