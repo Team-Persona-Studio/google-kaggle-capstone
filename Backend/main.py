@@ -36,9 +36,16 @@ def register(user: UserCreate):
         conn.commit()
         return {"msg": "User created", "username": user.username}
 
-    except:
+    except Exception as e:
         conn.rollback()
-        raise HTTPException(status_code=400, detail="Username already exists")
+        print(f"❌ Database error: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # Check if it's a duplicate username error
+        if "Duplicate entry" in str(e) or "unique" in str(e).lower():
+            raise HTTPException(status_code=400, detail="Username already exists")
+        # Otherwise raise the actual error
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
     finally:
         cursor.close()
