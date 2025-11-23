@@ -20,6 +20,11 @@ app.add_middleware(
 def read_root():
     return {"message": "Character AI Backend is running!", "docs_url": "/docs"}
 
+@app.on_event("startup")
+async def startup_event():
+    print("✅ STARTING UP - ROOT ROUTE SHOULD BE PRESENT")
+
+
 
 # --------------------------------------------------------
 # REGISTER
