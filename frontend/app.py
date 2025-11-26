@@ -3,8 +3,10 @@ import streamlit as st
 import requests
 import time
 from datetime import datetime
+import os
 
-BASE_URL = "https://google-kaggle-capstone.onrender.com"
+
+BASE_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="Character AI", layout="wide")
 

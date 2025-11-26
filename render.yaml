@@ -1,18 +1,18 @@
 services:
   - type: web
     name: character-ai-backend
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: cd Backend && uvicorn main:app --host 0.0.0.0 --port $PORT --proxy-headers
+    env: docker
+    dockerContext: ./Backend
+    dockerfilePath: ./Backend/Dockerfile
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.0
-  
+
   - type: web
     name: character-ai-frontend
-    env: python
-    buildCommand: pip install -r frontend/requirements.txt
-    startCommand: streamlit run frontend/app.py --server.port $PORT --server.address 0.0.0.0
+    env: docker
+    dockerContext: ./frontend
+    dockerfilePath: ./frontend/Dockerfile
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.0
