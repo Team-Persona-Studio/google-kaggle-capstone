@@ -1,4 +1,3 @@
-# frontend/app.py
 import streamlit as st
 import requests
 import time
@@ -19,6 +18,8 @@ if "personas" not in st.session_state:
     st.session_state.personas = []
 if "persona_name" not in st.session_state:
     st.session_state.persona_name = None
+if "menu" not in st.session_state:
+    st.session_state.menu = "Dashboard"   # Track active page
 
 
 # ---------------------- API HELPERS ----------------------
@@ -125,11 +126,12 @@ def create_persona_ui():
         r = api_post("/personas", json=payload)
         if r and r.status_code == 200:
             new_p = r.json()
-            st.success(f"Persona **{new_p['character_name']}** created successfully!")
+            st.success(f"🎉 Character **{new_p['character_name']}** created successfully!")
 
-            # auto-select new persona for chatting
+            # Auto-select newly created persona and redirect to Chat page
             st.session_state.persona_id = new_p["id"]
             st.session_state.persona_name = new_p["character_name"]
+            st.session_state.menu = "Chat"
             st.rerun()
         else:
             st.error(r.text if r else "Error")
@@ -158,7 +160,7 @@ def chat_ui(persona):
     r = api_get(f"/messages/full/{persona_id}")
     messages = r.json() if (r and r.status_code == 200) else []
 
-    # Display chat messages
+    # Display messages
     for m in messages:
         sender = m["sender"]
         text = m["message"]
@@ -171,18 +173,21 @@ def chat_ui(persona):
     user_msg = st.chat_input("Type your message…")
 
     if user_msg:
+        # Show user message instantly
+        st.chat_message("user").markdown(user_msg)
+
         payload = {
             "user_id": st.session_state.user_id,
             "persona_id": persona_id,
             "user_input": user_msg
         }
 
-        r = api_post("/agent/respond", json=payload)
-        if r and r.status_code == 200:
-            time.sleep(0.2)
-            st.rerun()
-        else:
-            st.error("Failed to send message")
+        # Send to backend
+        api_post("/agent/respond", json=payload)
+
+        # Wait a moment, then refresh history
+        time.sleep(0.2)
+        st.rerun()
 
 
 # ---------------------- MAIN PAGE ----------------------
@@ -200,16 +205,28 @@ def main():
 
     # Logged-in UI
     st.sidebar.title(f"Logged in as {st.session_state.username}")
-    action = st.sidebar.radio("Menu", ["Dashboard", "Create Persona", "Chat", "Logout"])
 
-    if action == "Logout":
-        st.session_state.user_id = None
-        st.session_state.username = None
-        st.session_state.persona_id = None
-        st.session_state.persona_name = None
+    menu_items = ["Dashboard", "Create Persona", "Chat", "Logout"]
+
+    # Use the session state value to set the radio button's index
+    current_index = menu_items.index(st.session_state.menu) if st.session_state.menu in menu_items else 0
+
+    action = st.sidebar.radio(
+        "Menu",
+        menu_items,
+        index=current_index
+    )
+
+    # Only update if user actually clicked a different option
+    if action != st.session_state.menu:
+        st.session_state.menu = action
+
+    # Render pages
+    if st.session_state.menu == "Logout":
+        st.session_state.clear()
         st.rerun()
 
-    elif action == "Dashboard":
+    elif st.session_state.menu == "Dashboard":
         personas = load_personas()
         st.header("Your Characters")
 
@@ -219,25 +236,29 @@ def main():
             for p in personas:
                 with st.container():
                     cols = st.columns([3, 1, 1])
-                    cols[0].markdown(f"### {p['character_name']}\nMode: `{p['mode']}`\nTone: `{p.get('tone', '')}`")
+                    cols[0].markdown(
+                        f"### {p['character_name']}\nMode: `{p['mode']}`\nTone: `{p.get('tone', '')}`"
+                    )
 
                     if cols[1].button("Chat", key=f"chat_{p['id']}"):
                         st.session_state.persona_id = p["id"]
                         st.session_state.persona_name = p["character_name"]
+                        st.session_state.menu = "Chat"
                         st.rerun()
 
                     if cols[2].button("Delete", key=f"del_{p['id']}"):
                         delete_persona(p["id"])
 
-    elif action == "Create Persona":
+    elif st.session_state.menu == "Create Persona":
         create_persona_ui()
 
-    elif action == "Chat":
+    elif st.session_state.menu == "Chat":
         if not st.session_state.persona_id:
-            st.info("Select a persona from Dashboard first.")
+            st.info("Select a persona from the Dashboard first.")
         else:
             personas = load_personas()
             persona = next((x for x in personas if x["id"] == st.session_state.persona_id), None)
+
             if persona:
                 chat_ui(persona)
             else:
@@ -246,3 +267,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
