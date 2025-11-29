@@ -197,7 +197,7 @@ def chat_ui(persona):
 
 # ---------------------- MAIN PAGE ----------------------
 def main():
-    st.title("Character AI – Frontend")
+    st.title("AI Persona")
 
     if not st.session_state.user_id:
         st.sidebar.title("Welcome")
