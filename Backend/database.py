@@ -12,9 +12,11 @@ DB_CONFIG = {
     "port": int(os.getenv("DB_PORT", 3306)),
 }
 
-# TiDB Cloud requires SSL encryption
-if os.getenv("DB_CA"):
+ssl_ca = "isrgrootx1.pem"
+if os.path.exists(ssl_ca):
+    DB_CONFIG["ssl_ca"] = ssl_ca
     DB_CONFIG["ssl_disabled"] = False
+    DB_CONFIG["ssl_verify_identity"] = True
 
 def get_db_conn():
     return mysql.connector.connect(**DB_CONFIG)

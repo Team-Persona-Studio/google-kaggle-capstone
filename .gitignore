@@ -13,4 +13,8 @@ env/
 *.pyc
 .idea
 
+
+*.idea
+idea
+
 isrgrootx1.pem
