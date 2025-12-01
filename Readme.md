@@ -24,6 +24,7 @@ We built a modular AI system with a multi-agent architecture:
 3. **Moderator Agent** – Ensures safe, clean output
 
 Users can:
+
 ✔ Create personas  
 ✔ Chat with each persona  
 ✔ Retrieve full histories  
