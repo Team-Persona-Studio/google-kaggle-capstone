@@ -1,6 +1,7 @@
-create database persona_project;
+create database persona_ai;
 show databases;
-use persona_project;
+use persona_ai;
+
 CREATE TABLE users (
     id INT(11) NOT NULL AUTO_INCREMENT,
     username VARCHAR(100) NOT NULL,

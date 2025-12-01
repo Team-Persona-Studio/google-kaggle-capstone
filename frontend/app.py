@@ -2,8 +2,18 @@ import streamlit as st
 import requests
 import time
 from datetime import datetime
+import os
 
-BASE_URL = "https://google-kaggle-capstone.onrender.com"
+# ---------------------- CONFIG & STYLES ----------------------
+st.set_page_config(
+    page_title="Persona AI",
+    page_icon="🤖",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Use environment variable for backend URL, default to localhost for local development
+BASE_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
 
 st.set_page_config(page_title="Character AI", layout="wide")
 
@@ -96,45 +106,63 @@ def load_personas():
     return st.session_state.personas
 
 
+def go_to_chat(p_id, p_name):
+    st.session_state.persona_id = p_id
+    st.session_state.persona_name = p_name
+    st.session_state.menu = "Chat"
+
+
+def handle_create_persona():
+    name = st.session_state.cp_name
+    mode = st.session_state.cp_mode
+    tone = st.session_state.cp_tone
+    summary = st.session_state.cp_summary
+
+    if not name:
+        st.session_state.cp_msg = ("error", "Character name is required")
+        return
+
+    if mode == "custom" and not summary:
+        st.session_state.cp_msg = ("error", "Summary required for custom mode")
+        return
+
+    payload = {
+        "user_id": st.session_state.user_id,
+        "character_name": name,
+        "mode": mode,
+        "tone": tone or None,
+        "summary": summary or None,
+    }
+
+    r = api_post("/personas", json=payload)
+    if r and r.status_code == 200:
+        new_p = r.json()
+        # Success - navigate to chat
+        st.session_state.persona_id = new_p["id"]
+        st.session_state.persona_name = new_p["character_name"]
+        st.session_state.menu = "Chat"
+        st.session_state.cp_msg = None # Clear message
+    else:
+        st.session_state.cp_msg = ("error", r.text if r else "Error")
+
+
 def create_persona_ui():
     st.header("Create Persona")
 
-    with st.form("persona_form"):
-        name = st.text_input("Character Name")
-        mode = st.selectbox("Mode", ["auto", "custom"])
-        tone = st.text_input("Tone (optional)")
-        summary = st.text_area("Summary (required only for CUSTOM)") if mode == "custom" else None
-        submit = st.form_submit_button("Create")
-
-    if submit:
-        if not name:
-            st.error("Character name is required")
-            return
-
-        if mode == "custom" and not summary:
-            st.error("Summary required for custom mode")
-            return
-
-        payload = {
-            "user_id": st.session_state.user_id,
-            "character_name": name,
-            "mode": mode,
-            "tone": tone or None,
-            "summary": summary or None,
-        }
-
-        r = api_post("/personas", json=payload)
-        if r and r.status_code == 200:
-            new_p = r.json()
-            st.success(f"🎉 Character **{new_p['character_name']}** created successfully!")
-
-            # Auto-select newly created persona and redirect to Chat page
-            st.session_state.persona_id = new_p["id"]
-            st.session_state.persona_name = new_p["character_name"]
-            st.session_state.menu = "Chat"
-            st.rerun()
+    if "cp_msg" in st.session_state and st.session_state.cp_msg:
+        type_, msg = st.session_state.cp_msg
+        if type_ == "error":
+            st.error(msg)
         else:
-            st.error(r.text if r else "Error")
+            st.success(msg)
+
+    with st.form("persona_form"):
+        st.text_input("Character Name", key="cp_name")
+        st.selectbox("Mode", ["auto", "custom"], key="cp_mode")
+        st.text_input("Tone (optional)", key="cp_tone")
+        st.text_area("Summary (required only for CUSTOM)", key="cp_summary")
+        
+        st.form_submit_button("Create", on_click=handle_create_persona)
 
 
 def delete_persona(persona_id):
@@ -208,18 +236,11 @@ def main():
 
     menu_items = ["Dashboard", "Create Persona", "Chat", "Logout"]
 
-    # Use the session state value to set the radio button's index
-    current_index = menu_items.index(st.session_state.menu) if st.session_state.menu in menu_items else 0
-
-    action = st.sidebar.radio(
+    st.sidebar.radio(
         "Menu",
         menu_items,
-        index=current_index
+        key="menu"
     )
-
-    # Only update if user actually clicked a different option
-    if action != st.session_state.menu:
-        st.session_state.menu = action
 
     # Render pages
     if st.session_state.menu == "Logout":
@@ -240,11 +261,8 @@ def main():
                         f"### {p['character_name']}\nMode: `{p['mode']}`\nTone: `{p.get('tone', '')}`"
                     )
 
-                    if cols[1].button("Chat", key=f"chat_{p['id']}"):
-                        st.session_state.persona_id = p["id"]
-                        st.session_state.persona_name = p["character_name"]
-                        st.session_state.menu = "Chat"
-                        st.rerun()
+                    if cols[1].button("Chat", key=f"chat_{p['id']}", on_click=go_to_chat, args=(p['id'], p['character_name'])):
+                        pass
 
                     if cols[2].button("Delete", key=f"del_{p['id']}"):
                         delete_persona(p["id"])
@@ -267,5 +285,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
-

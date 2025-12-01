@@ -6,7 +6,7 @@ from schemas import UserCreate, UserLogin, PersonaCreate, PersonaOut, MessageCre
 from utils import hash_password, verify_password
 from agents import MultiAgentPipeline, save_message_api
 
-app = FastAPI(title="Character AI – Final Backend")
+app = FastAPI(title="Persona AI – Final Backend")
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,6 +15,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/")
+def root():
+    return {"msg": "Persona AI Backend Running..."}
 
 @app.get("/health")
 def health_check():
@@ -49,6 +53,9 @@ def register(user: UserCreate):
 
     hashed = hash_password(user.password)
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    print(f"DEBUG: Registering user: '{user.username}'")
+
 
     try:
         cursor.execute("""
@@ -164,10 +171,16 @@ def agent_respond(
     pipeline = MultiAgentPipeline(persona["character_name"], persona["tone"] or "neutral")
 
     save_message_api(persona_id, "user", user_input)
-    reply = pipeline.run(persona_id, user_input)
-    save_message_api(persona_id, "agent", reply)
-
-    return {"reply": reply}
+    
+    try:
+        reply = pipeline.run(persona_id, user_input)
+        save_message_api(persona_id, "agent", reply)
+        return {"reply": reply}
+    except Exception as e:
+        print(f"❌ Agent Error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Agent Error: {str(e)}")
 
 
 # --------------------------------------------------------
